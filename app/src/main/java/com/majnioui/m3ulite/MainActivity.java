@@ -222,7 +222,9 @@ public class MainActivity extends Activity {
         root.addView(surface, new FrameLayout.LayoutParams(-1, -1, Gravity.CENTER));
         message = text(22, 400, 0xCCFFFFFF);
         message.setGravity(Gravity.CENTER);
-        root.addView(message, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
+        message.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+        message.setPaddingRelative(dp(48), 0, dp(48), 0);
+        root.addView(message, new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER));
         buildBar();
         buildMenu();
         buildManage();
@@ -486,7 +488,7 @@ public class MainActivity extends Activity {
                 if (e.toString().equals(query)) return;
                 query = e.toString();
                 buildRows();
-                list.setSelection(0);
+                select(list, 0, 0);
             }
         });
         search.setOnEditorActionListener((v, action, event) -> {
@@ -510,7 +512,7 @@ public class MainActivity extends Activity {
         for (int i = last ? rows.size() - 1 : 0; i >= 0 && i < rows.size(); i += last ? -1 : 1) {
             if (rows.get(i) instanceof Integer) {
                 list.requestFocus();
-                list.setSelectionFromTop(i, last ? list.getHeight() - dp(140) : dp(40));
+                select(list, i, last ? Integer.MAX_VALUE : dp(40));
                 return;
             }
         }
@@ -568,6 +570,9 @@ public class MainActivity extends Activity {
         l.setAdapter(a);
         l.setDivider(null);
         l.setVerticalScrollBarEnabled(false);
+        // Rows half scrolled out fade at the edges rather than look cut.
+        l.setVerticalFadingEdgeEnabled(true);
+        l.setFadingEdgeLength(dp(28));
         l.setItemsCanFocus(false);
         l.setDrawSelectorOnTop(false);
         GradientDrawable sel = new GradientDrawable();
@@ -592,6 +597,41 @@ public class MainActivity extends Activity {
         return hint;
     }
 
+    /**
+     * Selects row pos of l with its top about top pixels below the list's top, kept whole on screen:
+     * never so low that the row is cut or faded at the bottom, and never further down than the rows
+     * above it reach, so near the start of the list no header or row is cut off above. A list not laid
+     * out yet (a panel just made visible) is placed again once it has its height.
+     */
+    private void select(ListView l, int pos, int top) {
+        BaseAdapter a = (BaseAdapter) l.getAdapter();
+        if (pos < 0 || pos >= a.getCount()) return;
+        if (l.getHeight() == 0) {
+            l.setSelection(pos);
+            l.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+                @Override
+                public void onLayoutChange(View v, int left, int t, int right, int bottom, int ol, int ot, int or, int ob) {
+                    if (bottom - t <= 0) return;
+                    l.removeOnLayoutChangeListener(this);
+                    l.post(() -> select(l, pos, top));
+                }
+            });
+            return;
+        }
+        int width = View.MeasureSpec.makeMeasureSpec(l.getWidth(), View.MeasureSpec.EXACTLY);
+        int height = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        int above = 0;
+        for (int i = 0; i < pos && above < top; i++) {
+            View v = a.getView(i, null, l);
+            v.measure(width, height);
+            above += v.getMeasuredHeight();
+        }
+        View row = a.getView(pos, null, l);
+        row.measure(width, height);
+        int lowest = l.getHeight() - row.getMeasuredHeight() - l.getVerticalFadingEdgeLength();
+        l.setSelectionFromTop(pos, Math.max(0, Math.min(Math.min(top, above), lowest)));
+    }
+
     /** True when the selected row of l is the first (up) or the last row that can be selected. */
     private static boolean atEnd(ListView l, List<Object> r, boolean up) {
         int pos = l.getSelectedItemPosition();
@@ -609,7 +649,7 @@ public class MainActivity extends Activity {
         for (int i = up ? r.size() - 1 : 0; i >= 0 && i < r.size(); i += up ? -1 : 1) {
             if (!(r.get(i) instanceof String)) {
                 // Going down to the top: show the group header above the first row too.
-                l.setSelectionFromTop(i, up ? l.getHeight() - dp(140) : dp(40));
+                select(l, i, up ? Integer.MAX_VALUE : dp(40));
                 return true;
             }
         }
@@ -634,7 +674,7 @@ public class MainActivity extends Activity {
         if (add) favorites.add(c.key);
         prefs.edit().putString("favorites", new JSONArray(favorites).toString()).apply();
         setChannels(loaded);
-        list.setSelectionFromTop(Math.max(0, rows.indexOf(indexOf(c.key))), dp(140));
+        select(list, Math.max(0, rows.indexOf(indexOf(c.key))), dp(140));
         toast(add ? "★  " + c.name + t(" is a favourite", " أضيفت إلى المفضلة")
                 : c.name + t(" is no longer a favourite", " أزيلت من المفضلة"));
     }
@@ -665,6 +705,8 @@ public class MainActivity extends Activity {
         panel.animate().alpha(1f).translationX(0f).setDuration(180).start();
         main.removeCallbacks(hideBar);
         bar.setAlpha(0f);
+        // A message ("Loading…", "isn't available") moves to the middle of the video the panel leaves.
+        message.setPaddingRelative(dp(424), 0, dp(24), 0);
     }
 
     /** Fades the open panel out; it counts as closed straight away, so the keys go to the video. */
@@ -672,6 +714,7 @@ public class MainActivity extends Activity {
         LinearLayout panel = shown;
         shown = null;
         if (panel == null) return;
+        message.setPaddingRelative(dp(48), 0, dp(48), 0);
         panel.animate().cancel();
         panel.animate().alpha(0f).translationX(offEdge()).setDuration(150)
                 .withEndAction(() -> {
@@ -683,8 +726,9 @@ public class MainActivity extends Activity {
         show(manage);
         manageAdapter.notifyDataSetChanged();
         manageList.requestFocus();
-        manageList.setSelection(Math.max(0, manageRows.indexOf(
-                ChannelList.playlists(this).isEmpty() ? Action.ADD_PLAYLIST : Action.LANGUAGE)));
+        // From the top, so the first header and rows show whole.
+        select(manageList, Math.max(0, manageRows.indexOf(
+                ChannelList.playlists(this).isEmpty() ? Action.ADD_PLAYLIST : Action.LANGUAGE)), Integer.MAX_VALUE);
     }
 
     private void closeManage() {
@@ -699,7 +743,7 @@ public class MainActivity extends Activity {
         show(menu);
         adapter.notifyDataSetChanged();
         list.requestFocus();
-        list.setSelectionFromTop(Math.max(0, rows.indexOf(current >= 0 ? current : 0)), dp(140));
+        select(list, Math.max(0, rows.indexOf(current >= 0 ? current : 0)), dp(140));
     }
 
     private void closeMenu() {
@@ -719,7 +763,7 @@ public class MainActivity extends Activity {
             while (own > 0 && !(rows.get(own) instanceof String)) own--;
             for (int i = own - 1; i >= 0; i--) if (rows.get(i) instanceof String) { header = i; break; }
         }
-        if (header >= 0 && header + 1 < rows.size()) list.setSelectionFromTop(header + 1, dp(60));
+        if (header >= 0 && header + 1 < rows.size()) select(list, header + 1, dp(60));
     }
 
     private final class RowAdapter extends BaseAdapter {
@@ -1380,6 +1424,8 @@ public class MainActivity extends Activity {
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         if (color != 0) t.setTextColor(color);
         t.setIncludeFontPadding(false);
+        // To the layout's start, right in Arabic, even for a Latin channel name.
+        t.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
         t.setTypeface(Build.VERSION.SDK_INT >= 28 ? Typeface.create(font, weight, false) : font);
         return t;
     }
