@@ -42,7 +42,7 @@ Download the APK from [Releases](../../releases), or the latest build from
 [Actions](../../actions), and sideload it:
 
 ```bash
-adb install -r m3u-lite-3.7.apk
+adb install -r m3u-lite-3.8.apk
 ```
 
 ### Adding a playlist from a computer

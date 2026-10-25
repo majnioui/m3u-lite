@@ -153,7 +153,6 @@ public class MainActivity extends Activity {
     /** The panel that is open (menu or manage), or null while watching. */
     private LinearLayout shown;
     private ListView list, manageList;
-    private TextView menuStatus;
     private EditText search;
     private final RowAdapter adapter = new RowAdapter(rows, false);
     private final RowAdapter manageAdapter = new RowAdapter(manageRows, true);
@@ -233,7 +232,7 @@ public class MainActivity extends Activity {
 
     /** Fetches every playlist again in the background. */
     private void reload(boolean tell) {
-        if (tell) menuStatus.setText(t("Loading the playlists…", "جارٍ تحميل القوائم…"));
+        if (tell) toast(t("Loading the playlists…", "جارٍ تحميل القوائم…"));
         io.execute(() -> {
             List<ChannelList.Channel> fresh = ChannelList.refresh(this);
             main.post(() -> {
@@ -359,10 +358,8 @@ public class MainActivity extends Activity {
         rows.clear();
         String q = query.trim().toLowerCase(Locale.ROOT);
         String group = null;
-        int found = 0;
         for (int i = 0; i < channels.size(); i++) {
             if (!q.isEmpty() && !channels.get(i).name.toLowerCase(Locale.ROOT).contains(q)) continue;
-            found++;
             String g = i < favoriteCount ? FAVORITES : channels.get(i).group;
             if (!g.equals(group)) {
                 group = g;
@@ -370,7 +367,6 @@ public class MainActivity extends Activity {
             }
             rows.add(i);
         }
-        menuStatus.setText(q.isEmpty() ? count(channels.size()) : t(found + " found", "النتائج: " + found));
         adapter.notifyDataSetChanged();
     }
 
@@ -384,10 +380,7 @@ public class MainActivity extends Activity {
     private void buildMenu() {
         menu = panel();
 
-        menu.addView(title("M3U Lite"));
-        menuStatus = text(14, 400, 0x8CFFFFFF);
-        menuStatus.setPadding(0, dp(6), 0, dp(16));
-        menu.addView(menuStatus);
+        // Only the channels: no title or count above them, so the list has the panel's height.
         buildSearch();
         LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1, dp(46));
         slp.bottomMargin = dp(10);
@@ -690,7 +683,7 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * Fades panel in where it stays. The other one goes at once, even halfway through fading out, so
+     * Fades panel in where it stays (or shows it at once in place of the other one). The other one goes at once, even halfway through fading out, so
      * the two never show together.
      *
      * Panels don't slide: on a TV the video is a hardware layer under the window, shown through a hole
@@ -700,14 +693,20 @@ public class MainActivity extends Activity {
      */
     private void show(LinearLayout panel) {
         LinearLayout other = panel == menu ? manage : menu;
+        // From the other panel: swap at once, so the video never shows between the two.
+        boolean swap = shown == other;
         other.animate().cancel();
         other.setVisibility(View.GONE);
         other.setAlpha(1f);
         shown = panel;
         panel.animate().cancel();
         panel.setVisibility(View.VISIBLE);
-        panel.setAlpha(0f);
-        panel.animate().alpha(1f).setDuration(160).withEndAction(this::refreshVideoHole).start();
+        if (swap) {
+            panel.setAlpha(1f);
+        } else {
+            panel.setAlpha(0f);
+            panel.animate().alpha(1f).setDuration(160).withEndAction(this::refreshVideoHole).start();
+        }
         main.removeCallbacks(hideBar);
         bar.setAlpha(0f);
         // A message ("Loading…", "isn't available") moves to the middle of the video the panel leaves.
