@@ -150,6 +150,8 @@ public class MainActivity extends Activity {
     private ImageView barLogo;
     private TextView barName, barGroup;
     private LinearLayout menu, manage;
+    /** The panel that is open (menu or manage), or null while watching. */
+    private LinearLayout shown;
     private ListView list, manageList;
     private TextView menuStatus;
     private EditText search;
@@ -537,7 +539,6 @@ public class MainActivity extends Activity {
         manageList.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
             if (keyCode == inKey()) {
-                closeManage();
                 if (!channels.isEmpty()) openMenu();
                 return true;
             }
@@ -545,8 +546,8 @@ public class MainActivity extends Activity {
             return wrap(manageList, manageRows, keyCode);
         });
         manage.addView(manageList, new LinearLayout.LayoutParams(-1, 0, 1f));
-        manage.addView(hint(t("OK choose  ·  " + inArrow() + " channels  ·  Back close",
-                "OK اختيار  ·  " + inArrow() + " القنوات  ·  رجوع إغلاق")));
+        manage.addView(hint(t("OK choose  ·  " + inArrow() + " or Back channels",
+                "OK اختيار  ·  " + inArrow() + " أو رجوع القنوات")));
 
         root.addView(manage, new FrameLayout.LayoutParams(dp(400), -1, Gravity.START));
     }
@@ -639,22 +640,47 @@ public class MainActivity extends Activity {
     }
 
     private boolean menuOpen() {
-        return menu.getVisibility() == View.VISIBLE;
+        return shown == menu;
     }
 
     private boolean manageOpen() {
-        return manage.getVisibility() == View.VISIBLE;
+        return shown == manage;
+    }
+
+    /**
+     * Slides panel in. The other one goes at once, even halfway through fading out, so the two never
+     * show together.
+     */
+    private void show(LinearLayout panel) {
+        LinearLayout other = panel == menu ? manage : menu;
+        other.animate().cancel();
+        other.setVisibility(View.GONE);
+        other.setAlpha(1f);
+        other.setTranslationX(0f);
+        shown = panel;
+        panel.animate().cancel();
+        panel.setVisibility(View.VISIBLE);
+        panel.setAlpha(0f);
+        panel.setTranslationX(offEdge());
+        panel.animate().alpha(1f).translationX(0f).setDuration(180).start();
+        main.removeCallbacks(hideBar);
+        bar.setAlpha(0f);
+    }
+
+    /** Fades the open panel out; it counts as closed straight away, so the keys go to the video. */
+    private void hidePanel() {
+        LinearLayout panel = shown;
+        shown = null;
+        if (panel == null) return;
+        panel.animate().cancel();
+        panel.animate().alpha(0f).translationX(offEdge()).setDuration(150)
+                .withEndAction(() -> {
+                    if (shown != panel) panel.setVisibility(View.GONE);
+                }).start();
     }
 
     private void openManage() {
-        menu.animate().cancel();
-        menu.setVisibility(View.GONE);
-        manage.setVisibility(View.VISIBLE);
-        manage.setAlpha(0f);
-        manage.setTranslationX(offEdge());
-        manage.animate().alpha(1f).translationX(0f).setDuration(180).start();
-        main.removeCallbacks(hideBar);
-        bar.setAlpha(0f);
+        show(manage);
         manageAdapter.notifyDataSetChanged();
         manageList.requestFocus();
         manageList.setSelection(Math.max(0, manageRows.indexOf(
@@ -662,8 +688,7 @@ public class MainActivity extends Activity {
     }
 
     private void closeManage() {
-        manage.animate().cancel();
-        manage.setVisibility(View.GONE);
+        hidePanel();
     }
 
     private void openMenu() {
@@ -671,12 +696,7 @@ public class MainActivity extends Activity {
             openManage();
             return;
         }
-        menu.setVisibility(View.VISIBLE);
-        menu.setAlpha(0f);
-        menu.setTranslationX(offEdge());
-        menu.animate().alpha(1f).translationX(0f).setDuration(180).start();
-        main.removeCallbacks(hideBar);
-        bar.setAlpha(0f);
+        show(menu);
         adapter.notifyDataSetChanged();
         list.requestFocus();
         list.setSelectionFromTop(Math.max(0, rows.indexOf(current >= 0 ? current : 0)), dp(140));
@@ -684,8 +704,7 @@ public class MainActivity extends Activity {
 
     private void closeMenu() {
         if (!query.isEmpty()) search.setText("");   // the next time, the whole list
-        menu.animate().alpha(0f).translationX(offEdge()).setDuration(150)
-                .withEndAction(() -> menu.setVisibility(View.GONE)).start();
+        if (menuOpen()) hidePanel();
     }
 
     /** Selects the first channel of the next (+1) or previous (-1) group. */
@@ -1022,8 +1041,9 @@ public class MainActivity extends Activity {
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (manageOpen()) {
             if (keyCode == KeyEvent.KEYCODE_BACK) {
-                manage.animate().alpha(0f).translationX(offEdge()).setDuration(150)
-                        .withEndAction(() -> manage.setVisibility(View.GONE)).start();
+                // Back to the channels, the way Settings was opened from them.
+                if (channels.isEmpty()) hidePanel();
+                else openMenu();
                 return true;
             }
             return super.onKeyDown(keyCode, event);

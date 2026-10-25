@@ -34,7 +34,7 @@ and nothing else: it comes with no channels, no account and no ads. About 700 KB
 | Menu | Edit or remove the channel |
 | Left twice | Settings |
 
-Settings has the language, your playlists (OK on one to edit, reload or remove it) and your own channels.
+Settings has the language, your playlists (OK on one to edit, reload or remove it) and your own channels; Back or Right (Left in Arabic) returns to the channel list.
 
 ## Install
 
@@ -42,7 +42,7 @@ Download the APK from [Releases](../../releases), or the latest build from
 [Actions](../../actions), and sideload it:
 
 ```bash
-adb install -r m3u-lite-3.3.apk
+adb install -r m3u-lite-3.4.apk
 ```
 
 ### Adding a playlist from a computer
