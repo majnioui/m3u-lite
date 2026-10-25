@@ -9,7 +9,7 @@ and nothing else: it comes with no channels, no account and no ads. About 700 KB
   as you like; their channels are put together. Each is fetched again when the app opens, so editing a
   playlist changes the channels, and the last copy is kept for when it can't be reached.
 - **Favourites**: hold OK on a channel and it moves to the top of the list.
-- **Search**: a box at the top of the channel list.
+- **Search**: Up on the first channel opens a search box above the list.
 - **Your own channels**: add a single stream link, or edit or remove any channel. Your changes are
   kept apart from the playlists, so reloading one doesn't undo them.
 - **HLS, DASH and MPEG-TS** live streams, through Media3 (ExoPlayer). One player is reused for every
@@ -27,7 +27,7 @@ and nothing else: it comes with no channels, no account and no ads. About 700 KB
 
 | In the channel list | |
 | --- | --- |
-| Up / Down | Move; from the last channel round to the first and back. Up on the first channel goes to the search box |
+| Up / Down | Move; from the last channel round to the first and back. Up on the first channel opens the search box (hidden otherwise, so the list has the full height) |
 | Left / Right | Previous / next group |
 | OK | Watch |
 | Hold OK | Favourite, or no longer a favourite |
@@ -42,7 +42,7 @@ Download the APK from [Releases](../../releases), or the latest build from
 [Actions](../../actions), and sideload it:
 
 ```bash
-adb install -r m3u-lite-3.6.apk
+adb install -r m3u-lite-3.7.apk
 ```
 
 ### Adding a playlist from a computer

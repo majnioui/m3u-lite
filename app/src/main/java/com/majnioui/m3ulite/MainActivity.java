@@ -68,7 +68,7 @@ import java.util.concurrent.Executors;
  * M3U Lite: live channels from the owner's M3U playlists and Xtream Codes accounts (see ChannelList),
  * like a TV's own channel app: it opens on the last channel, full screen. OK opens the channel list on
  * the left: Up/Down to move (past the last channel back to the first and the other way round; Up on the
- * first channel goes to the search box first), Left/Right to jump between groups, OK to watch, hold OK
+ * first channel opens the search box first), Left/Right to jump between groups, OK to watch, hold OK
  * to make a channel a favourite (favourites come first), Menu to edit or remove it, Back to close.
  * Without the list, Up/Down and CH+/CH- switch channels and Back leaves.
  *
@@ -429,6 +429,7 @@ public class MainActivity extends Activity {
                 return true;
             }
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP && atEnd(list, rows, true)) {
+                search.setVisibility(View.VISIBLE);
                 search.requestFocus();
                 return true;
             }
@@ -436,15 +437,16 @@ public class MainActivity extends Activity {
         });
         menu.addView(list, new LinearLayout.LayoutParams(-1, 0, 1f));
         String o = outArrow(), i = inArrow();
-        menu.addView(hint(t(o + " " + i + " groups  ·  OK watch  ·  hold OK favourite\nMenu edit  ·  " + o + o + " settings  ·  Back close",
-                o + " " + i + " المجموعات  ·  OK مشاهدة  ·  OK مطولاً للمفضلة\nMenu تعديل  ·  " + o + o + " الإعدادات  ·  رجوع إغلاق")));
+        menu.addView(hint(t(o + " " + i + " groups  ·  OK watch  ·  hold OK favourite\nMenu edit  ·  ▲ on the first: search  ·  " + o + o + " settings",
+                o + " " + i + " المجموعات  ·  OK مشاهدة  ·  OK مطولاً للمفضلة\nMenu تعديل  ·  ▲ على الأولى: بحث  ·  " + o + o + " الإعدادات")));
 
         root.addView(menu, new FrameLayout.LayoutParams(dp(400), -1, Gravity.START));
     }
 
     /**
      * The search box above the channel list: the list keeps only the channels whose name has what is
-     * typed. Down goes to the first of them, Up round to the last.
+     * typed. Down goes to the first of them, Up round to the last. It shows only while it has focus
+     * (Up on the first channel) or something typed in it.
      */
     private void buildSearch() {
         search = new EditText(this);
@@ -490,6 +492,11 @@ public class MainActivity extends Activity {
             hideKeyboard();
             selectEnd(false);
             return true;
+        });
+        // Out of the way unless it is in use, so the channel list has the panel's whole height.
+        search.setVisibility(View.GONE);
+        search.setOnFocusChangeListener((v, focused) -> {
+            if (!focused && query.isEmpty()) search.setVisibility(View.GONE);
         });
         search.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
@@ -754,6 +761,7 @@ public class MainActivity extends Activity {
 
     private void closeMenu() {
         if (!query.isEmpty()) search.setText("");   // the next time, the whole list
+        search.setVisibility(View.GONE);
         if (menuOpen()) hidePanel();
     }
 
