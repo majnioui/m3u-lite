@@ -495,8 +495,8 @@ public class MainActivity extends Activity {
         });
         // Out of the way unless it is in use, so the channel list has the panel's whole height.
         search.setVisibility(View.GONE);
-        search.setOnFocusChangeListener((v, focused) -> {
-            if (!focused && query.isEmpty()) search.setVisibility(View.GONE);
+        search.setOnFocusChangeListener((v, hasFocus) -> {
+            if (!hasFocus && query.isEmpty()) search.setVisibility(View.GONE);
         });
         search.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
