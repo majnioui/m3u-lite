@@ -197,11 +197,6 @@ public class MainActivity extends Activity {
         return arabic ? "◀" : "▶";
     }
 
-    /** Where a panel slides in from: off its own edge. */
-    private int offEdge() {
-        return arabic ? dp(40) : -dp(40);
-    }
-
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -688,25 +683,35 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * Slides panel in. The other one goes at once, even halfway through fading out, so the two never
-     * show together.
+     * Fades panel in where it stays. The other one goes at once, even halfway through fading out, so
+     * the two never show together.
+     *
+     * Panels don't slide: on a TV the video is a hardware layer under the window, shown through a hole
+     * the window keeps where the SurfaceView is, uncovered by views. The hole is worked out at layout
+     * time, so a panel that moves afterwards (a slide) leaves the part it moved onto under the video
+     * until something lays the window out again: the panel looked cut at its edge.
      */
     private void show(LinearLayout panel) {
         LinearLayout other = panel == menu ? manage : menu;
         other.animate().cancel();
         other.setVisibility(View.GONE);
         other.setAlpha(1f);
-        other.setTranslationX(0f);
         shown = panel;
         panel.animate().cancel();
         panel.setVisibility(View.VISIBLE);
         panel.setAlpha(0f);
-        panel.setTranslationX(offEdge());
-        panel.animate().alpha(1f).translationX(0f).setDuration(180).start();
+        panel.animate().alpha(1f).setDuration(160).withEndAction(this::refreshVideoHole).start();
         main.removeCallbacks(hideBar);
         bar.setAlpha(0f);
         // A message ("Loading…", "isn't available") moves to the middle of the video the panel leaves.
         message.setPaddingRelative(dp(424), 0, dp(24), 0);
+        refreshVideoHole();
+    }
+
+    /** Has the window work out again what the panels cover of the video (see show). */
+    private void refreshVideoHole() {
+        root.requestTransparentRegion(surface);
+        root.requestLayout();
     }
 
     /** Fades the open panel out; it counts as closed straight away, so the keys go to the video. */
@@ -716,9 +721,10 @@ public class MainActivity extends Activity {
         if (panel == null) return;
         message.setPaddingRelative(dp(48), 0, dp(48), 0);
         panel.animate().cancel();
-        panel.animate().alpha(0f).translationX(offEdge()).setDuration(150)
+        panel.animate().alpha(0f).setDuration(150)
                 .withEndAction(() -> {
                     if (shown != panel) panel.setVisibility(View.GONE);
+                    refreshVideoHole();
                 }).start();
     }
 
