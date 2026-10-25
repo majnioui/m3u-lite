@@ -1,0 +1,57 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Release signing comes from the environment (GitHub Actions secrets, or your own shell):
+// M3U_KEYSTORE (path to the .jks), M3U_KEYSTORE_PASSWORD, M3U_KEY_ALIAS, M3U_KEY_PASSWORD.
+// Without them the release APK is signed with the debug key, which is fine for a local build.
+def keystore = System.getenv('M3U_KEYSTORE')
+
+android {
+    namespace 'com.majnioui.m3ulite'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.majnioui.m3ulite'
+        minSdk 26
+        targetSdk 34
+        versionCode 7
+        versionName '3.3'
+    }
+
+    signingConfigs {
+        release {
+            if (keystore) {
+                storeFile file(keystore)
+                storePassword System.getenv('M3U_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('M3U_KEY_ALIAS')
+                keyPassword System.getenv('M3U_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+            signingConfig keystore ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+base {
+    archivesName = 'm3u-lite'
+}
+
+dependencies {
+    // Media3 (ExoPlayer): HLS, DASH and plain MPEG-TS live streams.
+    implementation 'androidx.media3:media3-exoplayer:1.4.1'
+    implementation 'androidx.media3:media3-exoplayer-hls:1.4.1'
+    implementation 'androidx.media3:media3-exoplayer-dash:1.4.1'
+}
